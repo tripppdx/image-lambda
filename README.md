@@ -2,9 +2,9 @@
 
 Created by Harvey Lucas
 
-## image.json
+## images.json
 
-https://image-lambda-tripp.s3.us-west-2.amazonaws.com/image.json
+https://image-lambda-tripp.s3.us-west-2.amazonaws.com/images.json
 
 ## Usage
 
