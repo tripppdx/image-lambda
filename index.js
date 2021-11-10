@@ -1,56 +1,61 @@
 // dependencies
 const AWS = require('aws-sdk');
-const util = require('util');
 
 // get reference to the S3 client
 const s3 = new AWS.S3();
 
-exports.handler = async (event, context, callback) => {
-  // Read options from the event parameter.
-  console.log(
-    'Reading options from event:\n',
-    util.inspect(event, { depth: 5 })
-  );
-  const srcBucket = event.Records[0].s3.bucket.name;
-  // Object key may have spaces or unicode non-ASCII characters.
-  const srcKey = decodeURIComponent(
-    event.Records[0].s3.object.key.replace(/\+/g, ' ')
-  );
+exports.handler = async event => {
+  // TODO implement
 
-  console.log('my key', srcKey);
-  console.log('my bucket', srcBucket);
+  const bucketName = event.Records[0].s3.bucket.name;
+  const fileName = event.Records[0].s3.object.key;
+  const fileSize = event.Records[0].s3.object.size;
+
+  console.log(bucketName, fileName, fileSize);
+
+  const params = {
+    Bucket: bucketName,
+    Key: 'images.json',
+  };
 
   try {
-    let resData = await s3
-      .getObject({ Bucket: srcBucket, Key: 'image.json' })
-      .promise();
-    let parsedData = JSON.parse(resData.Body.toString());
-    console.log('parsed data', parsedData);
-    // if (!bucket.Body){
-    const newImage = await s3
+    const manifest = await s3.getObject(params).promise();
+
+    let manifestData = JSON.parse(manifest.Body.toString());
+    manifestData.push({
+      name: fileName,
+      size: fileSize,
+      type: 'image',
+    });
+
+    let manifestBody = JSON.stringify(manifestData);
+    console.log('current manifest', manifestData);
+
+    const newManifest = await s3
       .putObject({
-        Bucket: srcBucket,
-        Key: `image.json`,
-        Body: parsedData
-          ? [...parsedData, { test: 'test' }]
-          : [{ test: 'test' }],
+        ...params,
+        Body: manifestBody,
+        ContentType: 'application/json',
       })
       .promise();
-    console.log('myImage', newImage);
-  } catch (error) {
-    const newImage = await s3
-      .putObject({
-        Bucket: srcBucket,
-        Key: `image.json`,
-        Body: '[{"test": "test"}]',
-      })
-      .promise();
+    console.log('new Manifest', JSON.stringify(newManifest));
+  } catch (e) {
+    console.log(e);
+
+    const newManifest = {
+      Bucket: bucketName,
+      Key: 'images.json',
+      Body: JSON.stringify([{ name: fileName, size: fileSize, type: 'image' }]),
+      ContentType: 'application/json',
+    };
+
+    const manifest = await s3.putObject(newManifest).promise();
+    console.log('JSON file created for bucket:', manifest);
   }
 
   const response = {
     statusCode: 200,
     body: JSON.stringify('Hello from Lambda!'),
   };
-
   return response;
 };
